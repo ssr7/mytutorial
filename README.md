@@ -1,5 +1,5 @@
 # My Tutorial Materials
-This repository continas my tutorials that I teach to others. 
+This repository continas my tutorials that I learned and will teach to others. 
 My Teching Goals:
 1. Docker
 2. Linux
