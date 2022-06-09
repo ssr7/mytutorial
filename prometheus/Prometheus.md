@@ -721,7 +721,7 @@ systemctl status grafana
   
   ````
 
-- In order to enable authentication for `mikrotik`,  you should define new community and set `md5` password  in `mikrotik` device and then change `snmp.yml`
+- In order to enable authentication for `mikrotik`,  you should define new community and set `md5` password  in `mikrotik` device and then change `snmp.yml`. More info at https://github.com/prometheus/snmp_exporter/tree/main/generator
 
   ````bash
   $> cd /etc/snmp_exporter
