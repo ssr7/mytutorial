@@ -6,9 +6,10 @@
 sudo useradd --no-create-home --shell /bin/false blackbox_exporter
 https://github.com/prometheus/blackbox_exporter/releases #check last release and download into /opt
 sha256sum blackbox_exporter.tgz # check checksum 
-cd /opt
+cd /opt/
 tar xvfz blackbox_exporter.tgz
-cp ./blackbox_exporter/blackbox_exporter /usr/local/bin
+cd /opt/blackbox_exporter
+cp ./blackbox_exporter /usr/local/bin
 chown blackbox_exporter:blackbox_exporter /usr/local/bin/blackbox_exporter
 rm -rf ./blackbox_exporter-0.12.0.linux-amd64.tar.gz ~/blackbox_exporter-0.12.0.linux-amd64
 
@@ -147,160 +148,80 @@ ExecStart=/usr/local/bin/prometheus \
 WantedBy=multi-user.target
 ````
 
+## Enable SSL (optional)
+
+- Generate self-signed certificate
+
+  ````bash
+  openssl req   -x509   -newkey rsa:4096   -nodes   -keyout monitor.apadana.com.key -out your_domain_name.crt
+  ````
+
+  
+
+````bash
+vim /etc/prometheus/web-config.yml
+tls_server_config:
+  cert_file: /etc/prometheus/ssl/CERT_FILE.crt
+  key_file:  /etc/prometheus/ssl/PRIVATE_FILE.key
+basic_auth_users:
+        admin: YOUR-HASH-PASS
+````
+
+- If you need to enable authentication, you must make a hash password (bcrypt format) with below command
+
+  ````bash
+  htpasswd -nBC 12 '' | tr -d ':\n'       
+  New password:
+  Re-type new password:                                              
+  $2y$12$WLw2sYa.NYZoBVoCOE84qe3xNm7kbSoKVIBXP.PvqNDna60vnZhEW
+  ````
+
+- You can also use python library to produce hash password
+
+  ````bash
+  python -c 'import bcrypt; print(bcrypt.hashpw(b"<YOUR-PASSWORD>", bcrypt.gensalt(rounds=15)).decode("ascii"))'
+  ````
+
+- Change service file 
+
+  ````bash
+  vim /etc/systemd/system/prometheus.service
+  # addd below line to ExecStart
+      --web.config.file /etc/prometheus/web-config.yml \
+  # change below line in ExecStart
+  --web.external-url https://your_domain_name
+  ````
+
+- If you enable SSL and password in prometheus, you should reconfig `grafana` and set password and https url
+
+- If you enable SSL, you should change default config of prometheus
+
+  ````bash
+  vim /etc/prometheus/prometheus.yml
+    - job_name: "prometheus"
+      scheme: https
+      tls_config:
+         insecure_skip_verify: true
+      basic_auth:
+        username: admin
+        password: <CLEAR_PASSWORD>
+  
+      # metrics_path defaults to '/metrics'
+      # scheme defaults to 'http'.
+  
+      static_configs:
+        - targets: ["localhost:9090"]
+  
+  ````
+
+  
+
 ## Start Service
 
 ````bash
 systemctl daemon-reload
 systemctl enable prometheus --now
 systemctl status prometheus
-````
-
-
-
-
-
-# AlertManager
-
-````bash
-useradd --no-create-home --shell /bin/false alertmanager
-mkdir /etc/alertmanager
-mkdir /var/lib/alertmanager
-````
-
-
-
-## Download
-
-````bash
-cd /opt/
-wget https://github.com/prometheus/alertmanager/releases/download/v0.23.0/alertmanager-0.23.0.linux-amd64.tar.gz # dowanload the latest version and check hash
-tar xvfz alertmanager-0.23.0.linux-amd64.tar.gz
-````
-
-## Install
-
-````bash
-cd alertmanager-0.23.0.linux-amd64.
-cp ./alertmanager /usr/local/bin/
-cp ./amtool /usr/local/bin/amtool
-cp ./alertmanager.yml /etc/alertmanager/
-chown alertmanager:alertmanager /usr/local/bin/alertmanager
-chown alertmanager:alertmanager /usr/local/bin/amtool
-chown -R alertmanager:alertmanager /etc/alertmanager/
-chown -R alertmanager:alertmanager /var/lib/alertmanager
-````
-
-
-
-## Make Service File
-
-- Please note that to `--web.external-url `
-
-````bash
-vim /etc/systemd/system/alertmanager.service
-
-[Unit]
-Description=Alertmanager
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-User=alertmanager
-Group=alertmanager
-Type=simple
-WorkingDirectory=/etc/alertmanager/
-ExecStart=/usr/local/bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --web.external-url http://localhost:9093
-
-[Install]
-WantedBy=multi-user.target
-````
-
-
-
-## Start Service
-
-````bash
-systemctl daemon-reload
-systemctl enable alertmanager --now
-systemctl status alertmanager
-````
-
-
-
-# sachet
-
-## Compile
-
-````bash
-yum install go
-go get github.com/messagebird/sachet/cmd/sachet
-````
-
-## Install 
-
-````bash
-mkdir /etc/sachet
-useradd --no-create-home --shell /bin/false sachet
-cd ~/go/bin/
-cp sachet /usr/local/bin
-chown sachet:sachet /usr/local/bin/sachet 
-chown -R sachet:sachet /etc/sachet  
-````
-
-## Config
-
-````bash
-cd /etc/sachet
-wget https://github.com/messagebird/sachet/blob/master/examples/config.yaml  
-vim /etc/sachet/config.yaml
-
-providers:
-        
-        
-  kavenegar:
-    api_token: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
-templates:
-  - telegram.tmpl
-
-receivers:
-  - name: 'kavenegar'
-    provider: 'kavenegar'
-    #  from: '10008663'
-    to:
-     - '09380956874'
-
-
-````
-
-## Make service file
-
-````bash
-vim /etc/systemd/system/sachet.service
-
-[Unit]
-Description=Sachet: SMS center for prometheus
-Wants=network-online.target
-After=network-online.target
-
-[Service]
-User=sachet
-Group=sachet
-Type=simple
-WorkingDirectory=/etc/sachet/
-ExecStart=/usr/local/bin/sachet -config /etc/sachet/config.yaml
-
-[Install]
-WantedBy=multi-user.target
-
-````
-
-## Start service
-
-````bash
-chown -R sachet:sachet /etc/sachet
-systemctl daemon-reload
-systemctl enabel sachet.service --now
-systemctl status sachet
 ````
 
 
@@ -331,7 +252,7 @@ cp -r . /usr/share/grafana
 cp -r config/* /etc/grafana
 cp -r plugins/* /var/lib/grafana/plugins/
 cp conf/sample.ini /etc/grafana/grafana.ini
-cp bin/grafana-server bin/garafana-cli /usr/local/bin 
+cp bin/grafana-server bin/grafana-cli /usr/local/bin 
 
 
 ````
@@ -434,6 +355,22 @@ UMask=0027
 WantedBy=multi-user.target
 ````
 
+## Enable SSL(optional)
+
+````bash
+vim /etc/grafana/grafana.ini
+[server]
+#protocol = http
+protocol = https
+
+cert_file = /etc/grafana/ssl/CERT_FILE.crt
+cert_key = /etc/grafana/ssl/PRIVATE_KEY.key
+
+
+````
+
+- Please change default password after login.
+
 ## Start Grafana service
 
 ````bash
@@ -444,7 +381,228 @@ systemctl status grafana
 
 - Remove unnecessary files
 
-### Windows exporter
+
+
+
+
+# AlertManager
+
+````bash
+useradd --no-create-home --shell /bin/false alertmanager
+mkdir /etc/alertmanager
+mkdir /var/lib/alertmanager
+````
+
+
+
+## Download
+
+````bash
+cd /opt/
+wget https://github.com/prometheus/alertmanager/releases/download/v0.23.0/alertmanager-0.23.0.linux-amd64.tar.gz # dowanload the latest version and check hash
+tar xvfz alertmanager-0.23.0.linux-amd64.tar.gz
+````
+
+## Install
+
+````bash
+cd alertmanager-0.23.0.linux-amd64.
+cp ./alertmanager /usr/local/bin/
+cp ./amtool /usr/local/bin/amtool
+cp ./alertmanager.yml /etc/alertmanager/
+chown alertmanager:alertmanager /usr/local/bin/alertmanager
+chown alertmanager:alertmanager /usr/local/bin/amtool
+chown -R alertmanager:alertmanager /etc/alertmanager/
+chown -R alertmanager:alertmanager /var/lib/alertmanager
+````
+
+
+
+## Make Service File
+
+- Please note that to `--web.external-url `
+
+````bash
+vim /etc/systemd/system/alertmanager.service
+
+[Unit]
+Description=Alertmanager
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=alertmanager
+Group=alertmanager
+Type=simple
+WorkingDirectory=/etc/alertmanager/
+ExecStart=/usr/local/bin/alertmanager --config.file=/etc/alertmanager/alertmanager.yml --web.external-url http://localhost:9093
+
+[Install]
+WantedBy=multi-user.target
+````
+
+
+
+## Start Service
+
+````bash
+systemctl daemon-reload
+systemctl enable alertmanager --now
+systemctl status alertmanager
+````
+
+
+
+# sachet
+
+## Compile
+
+````bash
+yum install go
+go get github.com/messagebird/sachet/cmd/sachet
+
+
+# or download binary  in https://github.com/messagebird/sachet/releases
+
+````
+
+## Install 
+
+````bash
+mkdir /etc/sachet
+useradd --no-create-home --shell /bin/false sachet
+cd ~/go/bin/
+cp sachet /usr/local/bin
+chown sachet:sachet /usr/local/bin/sachet 
+chown -R sachet:sachet /etc/sachet  
+````
+
+## Config
+
+````bash
+cd /etc/sachet
+wget https://github.com/messagebird/sachet/blob/master/examples/config.yaml  
+vim /etc/sachet/config.yaml
+
+providers:
+        
+        
+  kavenegar:
+    api_token: 'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+templates:
+  - telegram.tmpl
+
+receivers:
+  - name: 'kavenegar'
+    provider: 'kavenegar'
+    #  from: '10008663'
+    to:
+     - '09380956874'
+
+
+````
+
+## Make service file
+
+````bash
+vim /etc/systemd/system/sachet.service
+
+[Unit]
+Description=Sachet: SMS center for prometheus
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=sachet
+Group=sachet
+Type=simple
+WorkingDirectory=/etc/sachet/
+ExecStart=/usr/local/bin/sachet -config /etc/sachet/config.yaml
+
+[Install]
+WantedBy=multi-user.target
+
+````
+
+## Start service
+
+````bash
+chown -R sachet:sachet /etc/sachet
+systemctl daemon-reload
+systemctl enable sachet.service --now
+systemctl status sachet
+````
+
+### Change in alert manager
+
+- You should change alter manager to send request to `sachet` webhook. Please note you should enable `blackbox` config for icmp in `prometheus` config
+
+- READ this link : https://github.com/prometheus/blackbox_exporter#permissions
+
+  ```bash
+  $> vim /etc/alertmanager/alertmanager
+  route:
+    group_by: ['instance', 'severity']
+    group_wait: 30s
+    group_interval: 5m
+    repeat_interval: 3h
+    receiver: 'kavenegar'
+  receivers:
+  - name: 'kavenegar'
+    webhook_configs:
+            #- url: 'http://127.0.0.1:5001'
+      - url: 'http://localhost:9876/alert'
+  inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      equal: ['alertname', 'dev', 'instance']
+  
+  
+  
+  ```
+
+- Define new `icmp rules` to catch down device
+
+  ```bash
+  vim /etc/prometheus/icmp_rules.yml
+  groups:
+  - name: alert.rules
+    rules:
+    - alert: InstanceDown
+      expr: probe_icmp_duration_seconds{phase="resolve"} == 0
+      for: 1m
+      labels:
+        severity: "critical"
+      annotations:
+        summary: "The link {{ $labels.instance }} is down"
+        # description: "{{ $labels.instance }} ob {{ $labels.job }} has been down for more than 1 minutes."
+  ```
+
+- Add `icmp_rules` to promethues config
+
+  ```bash
+  # Alertmanager configuration
+  alerting:
+    alertmanagers:
+      - static_configs:
+          - targets:
+             - localhost:9093
+  
+  # Load rules once and periodically evaluate them according to the global 'evaluation_interval'.
+  rule_files:
+     - icmp_rules.yml
+  
+  ```
+
+  
+
+
+
+## Windows Exporter
+
+
 
 - Download windows exporter from https://github.com/prometheus-community/windows_exporter/releases (MSI file)
 
