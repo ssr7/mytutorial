@@ -310,7 +310,7 @@ docker restart jenkins-bleocean
 
 ### DNS Server [Optional]
 
-- You can setup our own setup for `mydomain.io` with `dnsmasq`
+- You can setup your own setup for `mydomain.io` with `dnsmasq`
 
   ````bash
   $> cat /etc/dnsmasq.conf
