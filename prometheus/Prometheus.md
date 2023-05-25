@@ -566,7 +566,7 @@ systemctl status sachet
 - Define new `icmp rules` to catch down device
 
   ```bash
-  vim /etc/prometheus/icmp_rules.yml
+  $> vim /etc/prometheus/icmp_rules.yml
   groups:
   - name: alert.rules
     rules:
@@ -580,7 +580,7 @@ systemctl status sachet
         # description: "{{ $labels.instance }} ob {{ $labels.job }} has been down for more than 1 minutes."
   ```
 
-- Add `icmp_rules` to promethues config
+- Add `icmp_rules` to `prometheus.yml`
 
   ```bash
   # Alertmanager configuration
