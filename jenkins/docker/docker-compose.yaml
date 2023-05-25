@@ -1,0 +1,178 @@
+version: "3.9"
+services:
+  registry:
+    image: registry
+    container_name: registry
+    restart: on-failure
+    hostname: myregistry.io
+    environment:
+      REGISTRY_HTTP_TLS_CERTIFICATE: /certs/domain.crt
+      REGISTRY_HTTP_TLS_KEY: /certs/domain.key
+    volumes:
+      - ./registry/certs:/certs
+      - gitlab-registry-vol:/var/lib/registry
+    ports:
+      - "5000:5000"
+    networks:
+      - jenkins-net
+
+  gitlab-web:
+    image: gitlab/gitlab-ce
+    container_name: gitlab
+    restart: always
+    hostname: gitlab.example.com
+    ports:
+      - "4433:443"
+      - "8090:80"
+      - "2233:22"
+    volumes:
+      - gitlab-config:/etc/gitlab
+      - gitlab-logs:/var/log/gitlab
+      - gitlab-data:/var/opt/gitlab
+    networks:
+      - jenkins-net
+    depends_on:
+      - registry
+
+  jenkins-docker-builder:
+    image: docker:dind
+    container_name: jenkins-docker-builder
+    hostname: jenkins-docker-builder
+    privileged: true
+    restart: always
+    environment:
+      - DOCKER_TLS_CERTDIR:/certs
+    volumes:
+      - jenkins-docker-certs:/certs/client
+      - jenkins-data:/var/jenkins_home
+      - builder-data-vol:/var/lib
+      - ./registry/certs/domain.crt:/etc/ssl/certs/ca-registry.pem:ro
+    ports:
+      - "2376:2376"
+    networks:
+      - jenkins-net
+    command: --storage-driver overlay2
+
+  jenkins-blueocean:
+    build:
+            #context: ./jenkins-blueocean
+      dockerfile: ./jenkins-blueocean/Dockerfile
+    container_name: jenkins-blueocean
+    restart: on-failure
+    environment:
+      DOCKER_HOST: tcp://jenkins-docker-builder:2376
+      DOCKER_CERT_PATH: /certs/builder-client
+      DOCKER_TLS_VERIFY: "1"
+    ports:
+      - "8181:8080"
+      - "50001:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - jenkins-docker-certs:/certs/builder-client:ro
+      - dev-docker-runner-certs:/certs/dev-client:ro
+      - stg-docker-runner-certs:/certs/stg-client:ro
+      - prd-docker-runner-certs:/certs/prd-client:ro
+    networks:
+      - jenkins-net
+    depends_on:
+      - jenkins-docker-builder
+      - dev-docker-runner
+      - stg-docker-runner
+      - prd-docker-runner
+
+  dev-docker-runner:
+    image: docker:dind
+    container_name: dev-docker-runner
+    hostname: dev-docker-runner
+    privileged: true
+    restart: always
+    environment:
+      - DOCKER_TLS_CERTDIR:/certs
+    volumes:
+      - dev-docker-runner-certs:/certs/client
+      - dev-docker-runner-dind-vol:/var/lib
+      - jenkins-data:/var/jenkins_home
+      - ./registry/certs/domain.crt:/etc/ssl/certs/ca-registry.pem:ro
+    ports:
+      - "2380:2376"
+    networks:
+      - jenkins-net
+    command: --storage-driver overlay2
+    depends_on:
+      - jenkins-docker-builder
+
+  stg-docker-runner:
+    image: docker:dind
+    container_name: stg-docker-runner
+    hostname: stg-docker-runner
+    privileged: true
+    restart: always
+    environment:
+      - DOCKER_TLS_CERTDIR:/certs
+    volumes:
+      - stg-docker-runner-certs:/certs/client
+      - stg-docker-runner-dind-vol:/var/lib
+      - jenkins-data:/var/jenkins_home
+      - ./registry/certs/domain.crt:/etc/ssl/certs/ca-registry.pem:ro
+    ports:
+      - "2381:2376"
+    networks:
+      - jenkins-net
+    command: --storage-driver overlay2
+    depends_on:
+      - jenkins-docker-builder
+
+  prd-docker-runner:
+    image: docker:dind
+    container_name: prd-docker-runner
+    hostname: prd-docker-runner
+    privileged: true
+    restart: always
+    environment:
+      - DOCKER_TLS_CERTDIR:/certs
+    volumes:
+      - prd-docker-runner-certs:/certs/client
+      - prd-docker-runner-dind-vol:/var/lib
+      - jenkins-data:/var/jenkins_home
+      - ./registry/certs/domain.crt:/etc/ssl/certs/ca-registry.pem:ro
+    ports:
+      - "2382:2376"
+    networks:
+      - jenkins-net
+    command: --storage-driver overlay2
+    depends_on:
+      - jenkins-docker-builder
+   
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    volumes:
+      - ./local-nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./local-nginx/conf.d/:/etc/nginx/conf.d
+    ports:
+      - "80:80"
+    networks:
+      - jenkins-net
+    depends_on:
+      - registry
+      - dev-docker-runner
+      - stg-docker-runner
+      - prd-docker-runner
+
+networks:
+  jenkins-net: {}
+
+volumes:
+  gitlab-config: {}
+  gitlab-logs: {}
+  gitlab-data: {}
+  jenkins-docker-certs: {}
+  jenkins-data: {}
+  gitlab-registry-vol: {}
+  builder-data-vol: {}
+  dev-docker-runner-certs: {}
+  dev-docker-runner-dind-vol: {}
+  stg-docker-runner-certs: {}
+  stg-docker-runner-dind-vol: {}
+  prd-docker-runner-certs: {}
+  prd-docker-runner-dind-vol: {}
