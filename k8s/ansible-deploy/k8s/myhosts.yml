@@ -1,0 +1,5 @@
+[k8s-master]
+master ansible_host=127.0.0.1  ansible_user=root ansible_port=2215
+[k8s-workers]
+worker1 ansible_host=127.0.0.1  ansible_user=root ansible_port=2216
+worker2 ansible_host=127.0.0.1  ansible_user=root ansible_port=2217

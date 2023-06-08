@@ -1,0 +1,24 @@
+- name: master-firewalld
+  hosts: master
+  become: yes
+  tasks:
+     - name: Configure firewall rules
+       firewalld:
+         port: "{{ item }}"
+         permanent: yes
+         state: enabled
+       with_items:
+         - "6443/tcp"
+         - "2379-2380/tcp"
+         - "10250/tcp"
+         - "10251/tcp"
+         - "10259/tcp"
+         - "10257/tcp"
+         - "179/tcp"
+         - "4789/udp"
+       tags: firewall
+
+     - name: reload service firewalld
+       systemd:
+          name: firewalld
+          state: reloaded
