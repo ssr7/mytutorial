@@ -1,0 +1,33 @@
+- name: nfs setup
+  hosts: all
+  become: yes
+  tasks:
+    - name: add nfs-server host 
+      blockinfile:
+         path: "/etc/hosts"
+         block: |
+                10.0.2.18 nfs-server
+
+    - name: Create shared directoy
+      file:
+        path: /mnt/shared
+        state: directory
+
+    - name: start nfs-client.target
+      systemd:
+        name: nfs-client.target
+        state: started
+        enabled: yes
+
+    - name: mount filesystem
+      mount:
+        path: /mnt/shared
+        src: nfs-server:/mnt/shared
+        fstype: nfs
+        state: mounted
+
+    - name: add to fstab
+      blockinfile:
+         path: "/etc/fstab"
+         block: |
+                nfs-server:/mnt/shared   /mnt/shared  nfs defaults 0 0

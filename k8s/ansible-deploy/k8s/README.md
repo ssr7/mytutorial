@@ -18,3 +18,11 @@ ansible-playbook -i myhosts.yml 1...yml
 ansible-playbook -i myhosts.yml 2...yml
 ansible-playbook -i myhosts.yml 3...yml
 ````
+- We use `nfs` solution for sharing files. So if you need to mount a shared mount point, you need to run: 
+````bash
+$> systemctl enable nfs-client.target --now
+$> mount -t nfs 192.168.10.10:/data/nfs  /mnt/shared
+## or add to fstab
+
+$> echo -e  "192.168.10.10:/data/nfs   /mnt/shared  nfs defaults 0 0" >> /etc/fstab
+````

@@ -21,6 +21,8 @@
            - vim
            - bash-completion
            - bind-utils
+           - nfs-utils
+           - nfs4-acl-tools
         state: latest 
 
     - name: enable cri-o repo1
