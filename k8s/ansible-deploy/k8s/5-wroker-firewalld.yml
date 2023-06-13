@@ -1,0 +1,20 @@
+- name: master-firewalld
+  hosts: k8s-workers
+  become: yes
+  tasks:
+     - name: Configure firewall rules
+       firewalld:
+         port: "{{ item }}"
+         permanent: yes
+         state: enabled
+       with_items:
+         - "179/tcp"
+         - "10250/tcp"
+         - "30000-32767/tcp"
+         - "4789/udp"
+       tags: firewall
+
+     - name: reload service firewalld
+       systemd:
+          name: firewalld
+          state: reloaded
