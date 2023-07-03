@@ -153,7 +153,7 @@ WantedBy=multi-user.target
 - Generate self-signed certificate
 
   ````bash
-  openssl req   -x509   -newkey rsa:4096   -nodes   -keyout monitor.apadana.com.key -out your_domain_name.crt
+  openssl req   -x509   -newkey rsa:4096   -nodes   -keyout monitor.bpabanx.com.key -out your_domain_name.crt
   ````
 
   
