@@ -23,16 +23,28 @@
            - bind-utils
            - nfs-utils
            - nfs4-acl-tools
+           - python3-firewall
+           - firewalld
+           - iproute-tc
         state: latest 
+    - name: Print environment
+      shell: "echo $http_proxy"
 
     - name: enable cri-o repo1
       get_url:
-        url: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/CentOS_8/devel:kubic:libcontainers:stable.repo;
+        url: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable/CentOS_8/devel:kubic:libcontainers:stable.repo
+        #url: https://google.com
         dest:  /etc/yum.repos.d/devel:kubic:libcontainers:stable.repo
+          #use_proxy: true
+          #environment:
+          # https_proxy: http://127.0.0.1:8080
     - name: enable cri-o repo2
       get_url:
         url: https://download.opensuse.org/repositories/devel:kubic:libcontainers:stable:cri-o:1.22/CentOS_8/devel:kubic:libcontainers:stable:cri-o:1.22.repo
         dest: /etc/yum.repos.d/devel:kubic:libcontainers:stable:cri-o:1.22.repo 
+          #use_proxy: true
+          #environment:
+          # https_proxy: http://127.0.0.1:8080
 
     - name: update repolist
       yum:
@@ -159,3 +171,8 @@
 
     - name: Apply new settings
       command: sudo sysctl --system
+
+    - name: Set hostname for all hosts
+      hostname:
+        name: "{{ inventory_hostname }}"
+        use: systemd

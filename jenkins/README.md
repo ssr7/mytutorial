@@ -314,9 +314,9 @@ docker restart jenkins-bleocean
 
   ````bash
   $> cat /etc/dnsmasq.conf
-  address=/dev.mydomain.io/172.26.7.32
-  address=/stg.mydomain.io/172.26.7.32
-  address=/prd.mydomain.io/172.26.7.32
+  address=/dev.mydomain.io/172.16.1.1
+  address=/stg.mydomain.io/172.16.1.2
+  address=/prd.mydomain.io/172.16.1.3
   
   ````
 

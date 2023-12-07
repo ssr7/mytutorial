@@ -12,11 +12,40 @@
          - "10250/tcp"
          - "30000-32767/tcp"
          - "4789/udp"
+         - "8472/tcp"
+         - "8472/udp"
          - "53/udp"
          - "53/tcp"
          - "9153/tcp"
        tags: firewall
 
+     - name: add source of ip to pulic zone
+       firewalld:
+         interface: "cni0"
+         zone: trusted
+         state: enabled
+         permanent: yes
+        
+           #     - name: add source of ip to pulic zone
+           #       firewalld:
+           #         source: "172.16.1.1"
+           #         zone: trusted
+           #         state: enabled
+           #         permanent: yes
+           #
+           #     - name: add source of ip to pulic zone
+           #       firewalld:
+           #         source: "172.16.1.2"
+           #         zone: trusted
+           #         state: enabled
+           #         permanent: yes
+           #
+           #     - name: add source of ip to pulic zone
+           #       firewalld:
+           #         source: "172.16.1.3"
+           #         zone: trusted
+           #         state: enabled
+           #         permanent: yes
      - name: reload service firewalld
        systemd:
           name: firewalld

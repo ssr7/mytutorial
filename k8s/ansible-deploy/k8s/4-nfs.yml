@@ -1,33 +1,79 @@
-- name: nfs setup
-  hosts: all
+- name: nfs installation
+  hosts: nfs-server
   become: yes
   tasks:
-    - name: add nfs-server host 
-      blockinfile:
-         path: "/etc/hosts"
-         block: |
-                10.0.2.18 nfs-server
+    - name: change dns
+      lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver 4.2.2.4" 
+        insertbefore: BOF
 
-    - name: Create shared directoy
+    - name: change dns
+      lineinfile:
+        path: /etc/resolv.conf
+        line: "nameserver 8.8.8.8" 
+        insertbefore: BOF
+
+    - name: update repolist
+      yum:
+        list: "*"
+
+    - name: disable selinux
+      command: setenforce 0
+
+    - name: installation package
+      yum:
+        name: 
+           - dnf-plugins-core
+           - vim
+           - bash-completion
+           - nfs-utils
+           - firewalld
+           - iproute-tc
+           - python3-firewall
+
+    - name: add nfs expose path 
+      blockinfile:
+         path: "/etc/exports"
+         block: |
+                /mnt/shared 172.16.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+    
+    - name: create /mnt/shared
       file:
         path: /mnt/shared
         state: directory
+        mode: 0755
 
-    - name: start nfs-client.target
+
+    - name: start nfs service
       systemd:
-        name: nfs-client.target
+        name: nfs-server
         state: started
         enabled: yes
 
-    - name: mount filesystem
-      mount:
-        path: /mnt/shared
-        src: nfs-server:/mnt/shared
-        fstype: nfs
-        state: mounted
+    - name: add  export nfs
+      command: sudo exportfs -arv
 
-    - name: add to fstab
-      blockinfile:
-         path: "/etc/fstab"
-         block: |
-                nfs-server:/mnt/shared   /mnt/shared  nfs defaults 0 0
+    - name: show export nfs
+      command: sudo exportfs -s
+      register: exp_out
+
+    - name: show nfs config
+      debug: 
+        var: exp_out.stdout_lines
+     
+    - name: Configure firewall rules
+      firewalld:
+         service: "{{ item }}"
+         permanent: yes
+         state: enabled
+      with_items:
+         - "nfs"
+         - "rpc-bind"
+         - "mountd"
+
+    - name: Set hostname for all hosts
+      hostname:
+        name: "nfs-server"
+        use: systemd
+          

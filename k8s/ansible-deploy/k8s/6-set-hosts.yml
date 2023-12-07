@@ -1,0 +1,34 @@
+- name: Add nodes to /etc/hosts
+  hosts: all
+  become: true
+  gather_facts: yes
+  tasks:
+    #    - name: Get all nodes
+    #      add_host:
+    #        name: "{{ inventory_hostname }}"
+    #        ansible_host: "{{ hostvars[inventory_hostname]['ansible_host'] }}"
+    #      register: all_nodes
+    #    - name: log
+    #      debug:
+    #        msg: "{{all_nodes}}"
+    #
+    #    - name: Add nodes to /etc/hosts
+    #      lineinfile:
+    #        path: /etc/hosts
+    #        line: "{{ item.value }} {{ item.key }}"
+    #      loop: "{{ all_nodes['ansible_facts']['add_host'] }}"
+    #      when: item.value is not none
+    #
+    - name: Update the /etc/hosts file with node name
+      tags: etchostsupdate
+      become: yes
+      become_user: root
+      lineinfile:
+        dest: "/etc/hosts"
+        regexp: ".*\t{{ hostvars[item]['ansible_hostname']}}\t{{ hostvars[item]['ansible_hostname']}}"
+        line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}\t{{ hostvars[item]['ansible_hostname']}}\t{{ hostvars[item]['ansible_hostname']}}"
+        state: present
+        backup: yes
+      register: etchostsupdate
+      when: ansible_hostname != "{{ item }}" or ansible_hostname == "{{ item }}"
+      with_items: "{{groups['all']}}"
